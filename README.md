@@ -29,7 +29,7 @@ Take the sentence: `"Bird was flying around"`
 |------|-------|----------------------|
 | 1 | `Bird` | There is a bird |
 | 2 | `was` | Something was |
-| 3 | `flying` | A bird was flying ✦ |
+| 3 | `flying` | A bird was flying |
 | 4 | `around` | A bird was flying around |
 
 At step 3, the scene vector has effectively *imagined* a flying bird — not by attending over all past tokens quadratically, but by accumulating structured differences recurrently.
