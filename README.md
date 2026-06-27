@@ -10,6 +10,7 @@ Hello, everyone who will see this paper and maybe even use it in their own LLMs.
 
 I developed an algorithm that — to my knowledge — has no exact prior art, and that outperforms a standard MHA baseline in a controlled, fair comparison.
 
+
 ---
 
 ## Core Idea
@@ -76,6 +77,7 @@ STAR is inherently sequential (recurrent), but contains no quadratic attention m
 ---
 
 ## Results
+**(STARLLM.py and MHALLM.py is the files that was used in the test)**
 
 Trained on **WikiText-2-raw** for **1 epoch**, `d_model=512`, 4 layers, `seq_len=256`, batch size 16. All hyperparameters and training conditions are identical between models.
 
