@@ -19,7 +19,7 @@ DEVICE     = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 # ─── SceneLayer ───────────────────────────────────────────────────────────────
-class SceneLayer(nn.Module):
+class STARLayer(nn.Module):
     def __init__(self, d_model: int):
         super().__init__()
 
@@ -61,13 +61,12 @@ class SceneLayer(nn.Module):
         for i in range(T):
             tok = x[:, i, :]
 
-            # tanh ограничивает каждую запись в сцену до [-1, 1]
-            # без этого большой tok_proj * большой scene_proj -> взрыв
+            # tanh keep scene values between -1 and 1
             delta_scene = torch.tanh(
                 self.tok_proj(tok) * (1.0 + self.scene_proj(scene))
             )
 
-            # LayerNorm держит сцену в стабильном масштабе на каждом шаге
+            # LayerNorm
             scene = self.scene_norm(scene + delta_scene)
 
             out.append(tok + self.W_out(scene))
@@ -75,13 +74,13 @@ class SceneLayer(nn.Module):
         return torch.stack(out, dim=1)                     # (B, T, D)
 
 
-# ─── SceneBlock ───────────────────────────────────────────────────────────────
-class SceneBlock(nn.Module):
+# ─── STARBlock ───────────────────────────────────────────────────────────────
+class STARBlock(nn.Module):
 
     def __init__(self, d_model: int, ffn_mult: int = FFN_MULT):
         super().__init__()
         self.norm1  = nn.LayerNorm(d_model)
-        self.scene  = SceneLayer(d_model)
+        self.star  = STARLayer(d_model)
         self.norm2  = nn.LayerNorm(d_model)
         self.ffn    = nn.Sequential(
             nn.Linear(d_model, d_model * ffn_mult),
@@ -90,13 +89,13 @@ class SceneBlock(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x + self.scene(self.norm1(x))   # scene sub-layer
+        x = x + self.star(self.norm1(x))   # star sub-layer
         x = x + self.ffn(self.norm2(x))     # ffn sub-layer
         return x
 
 
-# ─── SceneLM ──────────────────────────────────────────────────────────────────
-class SceneLM(nn.Module):
+# ─── STARLM ──────────────────────────────────────────────────────────────────
+class STARLM(nn.Module):
     def __init__(
         self,
         vocab_size: int,
@@ -109,11 +108,11 @@ class SceneLM(nn.Module):
 
         self.tok_emb = nn.Embedding(vocab_size, d_model)
         self.pos_emb = nn.Embedding(max_seq_len, d_model)
-        self.blocks  = nn.ModuleList([SceneBlock(d_model) for _ in range(n_layers)])
+        self.blocks  = nn.ModuleList([STARBlock(d_model) for _ in range(n_layers)])
         self.norm    = nn.LayerNorm(d_model)
         self.head    = nn.Linear(d_model, vocab_size, bias=False)
 
-        # Weight tying: эмбеддинг и проекция на словарь — одни веса
+        # Weight tying:
         self.head.weight = self.tok_emb.weight
 
         self._init_weights()
@@ -128,7 +127,7 @@ class SceneLM(nn.Module):
     def forward(self, idx: torch.Tensor) -> torch.Tensor:
         # idx : (B, T)
         B, T = idx.shape
-        assert T <= self.max_seq_len, f"Длина {T} > max_seq_len {self.max_seq_len}"
+        assert T <= self.max_seq_len, f"Length {T} > max_seq_len {self.max_seq_len}"
 
         pos = torch.arange(T, device=idx.device)
         x   = self.tok_emb(idx) + self.pos_emb(pos)   # (B, T, D)
@@ -178,7 +177,7 @@ def tokenize_split(split, tokenizer) -> list:
 
 
 def ppl(loss: float) -> float:
-    return math.exp(min(loss, 20))   # cap чтобы не было inf в начале
+    return math.exp(min(loss, 20))
 
 
 def count_params(model: nn.Module) -> str:
@@ -191,21 +190,21 @@ def train():
     print(f"Device : {DEVICE}")
 
     # Tokenizer
-    print("Загрузка токенизатора GPT-2...")
+    print("Loading tokenizer GPT-2...")
     tokenizer  = GPT2TokenizerFast.from_pretrained("gpt2")
     VOCAB_SIZE = tokenizer.vocab_size           # 50257
 
     # Dataset
-    print("Загрузка WikiText-2-raw...")
+    print("Loading WikiText-2-raw...")
     raw = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1")
 
-    print("Токенизация...")
+    print("Tokenizing...")
     train_ids = tokenize_split(raw["train"],      tokenizer)
     val_ids   = tokenize_split(raw["validation"], tokenizer)
     test_ids  = tokenize_split(raw["test"],       tokenizer)
-    print(f"  train : {len(train_ids):,} токенов")
-    print(f"  val   : {len(val_ids):,} токенов")
-    print(f"  test  : {len(test_ids):,} токенов")
+    print(f"  train : {len(train_ids):,} tokens")
+    print(f"  val   : {len(val_ids):,} tokens")
+    print(f"  test  : {len(test_ids):,} tokens")
 
     train_ds = TokenDataset(train_ids, SEQ_LEN)
     val_ds   = TokenDataset(val_ids,   SEQ_LEN)
