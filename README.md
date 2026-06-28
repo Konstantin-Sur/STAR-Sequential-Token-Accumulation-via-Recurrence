@@ -1,4 +1,4 @@
-# STAR — Sequential Token Accumulation via Recurrence
+# STAR — Scene Token Accumulation via Recurrence
 
 > *A recurrent sequence mechanism that outperforms baseline Multi-Head Attention on WikiText-2 in a single epoch.*
 
