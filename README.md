@@ -139,10 +139,9 @@ class STARLayer(nn.Module):
 
 This is an early experimental result on a small dataset. Next steps:
 
-- [ ] Rewrite "for" loops to speed them up on cuda
+- [ ] Rewrite layer to speed it up on cuda
 - [ ] Train on WikiText-103 for statistical robustness
 - [ ] Compare against Mamba and RWKV at the same scale
-- [ ] Implement parallel CUDA scan for O(n) wall-clock speed
 - [ ] Visualize what the scene vector learns over a sequence
 - [ ] Scale to larger model sizes
 
